@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ghumo Duniya - AI Travel Concierge</title>
+<!-- Optional: used only to draw A2UI Icon components. If it can't load (offline/
+     corp network), icons fall back to showing their name as text. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined">
+<style>
+  :root {
+    --accent: #0d9488;
+    --accent-dark: #0f766e;
+    --accent-light: #f0fdfa;
+    --accent-subtle: #ccfbf1;
+    --bg: #f8fafc;
+    --chat-bg: #f1f5f9;
+    --border: #e2e8f0;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  header {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+    color: #fff;
+    padding: 0.9rem 1.4rem;
+    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-brand { display: flex; align-items: center; gap: 0.6rem; }
+  .header-brand h1 { margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
+  .header-brand span { font-size: 0.8rem; background: rgba(255, 255, 255, 0.2); padding: 0.15rem 0.5rem; border-radius: 12px; }
+  
+  #chat-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 860px;
+    width: 100%;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* Dialogue / Message Row Layout */
+  .msg-row {
+    display: flex;
+    gap: 0.75rem;
+    max-width: 85%;
+    animation: fadeIn 0.2s ease-out;
+  }
+  .msg-row.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+  }
+  .msg-row.agent {
+    align-self: flex-start;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Avatars */
+  .avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .msg-row.agent .avatar {
+    background: var(--accent);
+    color: #fff;
+  }
+  .msg-row.user .avatar {
+    background: #e2e8f0;
+    color: var(--text-secondary);
+  }
+
+  /* Dialogue Content Column */
+  .msg-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-width: 100%;
+  }
+  .msg-row.user .msg-content {
+    align-items: flex-end;
+  }
+  .sender-name {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 0 0.25rem;
+  }
+
+  /* Dialogue Bubbles */
+  .bubble {
+    display: inline-block;
+    padding: 0.75rem 1rem;
+    border-radius: 14px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-word;
+    border: 1px solid var(--border);
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .msg-row.user .bubble {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-top-right-radius: 3px;
+    box-shadow: 0 2px 4px rgba(13, 148, 136, 0.25);
+  }
+  .msg-row.agent .bubble {
+    border-top-left-radius: 3px;
+    background: #ffffff;
+  }
+  .bubble.rich {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    max-width: 100%;
+    box-shadow: none !important;
+    white-space: normal;
+  }
+
+  /* Animated Typing Indicator */
+  .typing-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.2rem;
+  }
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: typingPulse 1.2s infinite ease-in-out;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typingPulse {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+  .typing-text {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-left: 0.35rem;
+    font-style: italic;
+  }
+
+  /* Prompt Chips */
+  .prompt-chips {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.65rem 1rem;
+    background: #fff;
+    border-top: 1px solid var(--border);
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: thin;
+  }
+  .prompt-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: var(--accent-light);
+    border: 1px solid var(--accent-subtle);
+    color: var(--accent-dark);
+    border-radius: 20px;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease-in-out;
+  }
+  .prompt-chip:hover {
+    background: var(--accent-subtle);
+    border-color: #99f6e4;
+    transform: translateY(-1px);
+  }
+
+  /* Input Form */
+  form {
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem 1rem;
+    border-top: 1px solid var(--border);
+    background: #fff;
+  }
+  input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+  }
+  button.send-btn {
+    padding: 0.75rem 1.35rem;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: background 0.15s ease;
+  }
+  button.send-btn:hover {
+    background: var(--accent-dark);
+  }
+
+  /* --- A2UI component styles (Card, Column, Row, Text, Divider, List, Image, Icon) --- */
+  .a2card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.15rem;
+    background: #fff;
+    box-shadow: var(--card-shadow);
+    max-width: 100%;
+    margin-top: 0.35rem;
+  }
+  .a2card + .a2card, .a2col > .a2card { margin-top: 0.65rem; }
+  .a2col { display: flex; flex-direction: column; gap: 0.5rem; }
+  .a2row { display: flex; flex-direction: row; gap: 0.65rem; align-items: center; flex-wrap: wrap; }
+  .a2row.between { justify-content: space-between; }
+  .a2text { margin: 0; line-height: 1.5; color: var(--text-primary); }
+  .a2text.a2-h1 { font-size: 1.4rem; font-weight: 700; color: var(--accent-dark); }
+  .a2text.a2-h2 { font-size: 1.2rem; font-weight: 700; color: var(--accent-dark); }
+  .a2text.a2-h3 { font-size: 1.05rem; font-weight: 600; }
+  .a2text.a2-h4 { font-size: 0.95rem; font-weight: 600; }
+  .a2text.a2-caption { font-size: 0.85rem; color: var(--text-secondary); }
+  .a2divider { border: none; border-top: 1px solid var(--border); margin: 0.5rem 0; width: 100%; }
+  .a2img { max-width: 100%; border-radius: 10px; display: block; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+  .material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-size: 1.25rem; line-height: 1; vertical-align: middle; color: var(--accent); }
+  .prose-content {
+    margin-top: 0.65rem;
+    line-height: 1.55;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+  }
+  .prose-content ul {
+    margin: 0.4rem 0 0.5rem 1.25rem;
+    padding: 0;
+  }
+  .prose-content li {
+    margin-bottom: 0.25rem;
+  }
+  .prose-content strong {
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-brand">
+    <span class="material-symbols-outlined" style="color:#fff; font-size:1.4rem;">explore</span>
+    <h1>Ghumo Duniya</h1>
+    <span>घूमो दुनिया | AI Travel Concierge</span>
+  </div>
+</header>
+<div id="chat-wrapper">
+  <div id="log"></div>
+  <div class="prompt-chips">
+    <button type="button" class="prompt-chip" data-prompt="I am driving from Delhi to Agra via road, suggest some 1 hr spiritual detours I can visit">🚗 Delhi to Agra 1-hr detours</button>
+    <button type="button" class="prompt-chip" data-prompt="Estimate a 3-day moderate trip budget for Jaipur in INR">🇮🇳 3-day Jaipur budget in ₹</button>
+    <button type="button" class="prompt-chip" data-prompt="Plan a 4-day beach trip to Goa and estimate total cost in INR">🏖️ 4-day Goa trip & ₹ budget</button>
+    <button type="button" class="prompt-chip" data-prompt="Estimate a 5-day budget for Paris converted to INR including dining and museum tickets">💶 5-day Paris budget in ₹</button>
+  </div>
+  <form id="form">
+    <input id="input" placeholder="Ask Ghumo Duniya to plan your trip, calculate budgets in ₹, or find detours…" autocomplete="off" autofocus>
+    <button class="send-btn">Send</button>
+  </form>
+</div>
+
+<script>
+const log = document.getElementById("log");
+const form = document.getElementById("form");
+const input = document.getElementById("input");
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+function bubble(who) {
+  const row = el("div", "msg-row " + who);
+  const avatar = el("div", "avatar");
+  avatar.innerHTML = who === "agent" 
+    ? `<span class="material-symbols-outlined" style="font-size:1.15rem; color:#fff;">travel_explore</span>` 
+    : `<span class="material-symbols-outlined" style="font-size:1.15rem; color:#64748b;">person</span>`;
+  
+  const content = el("div", "msg-content");
+  const sender = el("div", "sender-name", who === "agent" ? "Ghumo Duniya" : "You");
+  const b = el("div", "bubble");
+  
+  content.appendChild(sender);
+  content.appendChild(b);
+  row.appendChild(avatar);
+  row.appendChild(content);
+  
+  log.appendChild(row);
+  log.scrollTop = log.scrollHeight;
+  return b;
+}
+
+/* ----------------------------------------------------------------------------
+ * A2UI mini-renderer (v0.8 Basic Catalog subset).
+ * Renders Card / Column / Row / Text / Divider / List / Image / Icon.
+ * Anything else falls back to plain text (see renderReply). All text goes in via
+ * textContent and image URLs are validated, so agent output can't inject HTML.
+ * -------------------------------------------------------------------------- */
+
+// A "bound value" is usually {literalString: "..."}; we only support literals.
+function boundStr(v) {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v.literalString === "string") return v.literalString;
+  return "";
+}
+
+// child ids of a component's props: single `child` and/or `children.explicitList`.
+function childIds(props) {
+  const ids = [];
+  if (props && typeof props.child === "string") ids.push(props.child);
+  const ch = props && props.children;
+  if (ch && Array.isArray(ch.explicitList)) for (const c of ch.explicitList) if (typeof c === "string") ids.push(c);
+  return ids;
+}
+
+// A2UI icon names are camelCase (locationOn); Material Symbols wants snake_case.
+function iconName(n) { return String(n || "").replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/\s+/g, "_").toLowerCase(); }
+
+function buildNode(id, comps, seen) {
+  if (!id || seen.has(id)) return null;   // missing / cycle guard
+  seen.add(id);
+  const spec = comps[id];
+  if (!spec || typeof spec !== "object") return null;
+  const type = Object.keys(spec)[0];
+  const props = spec[type] || {};
+  const kids = () => childIds(props).map(cid => buildNode(cid, comps, seen)).filter(Boolean);
+
+  switch (type) {
+    case "Card": {
+      const d = el("div", "a2card"); kids().forEach(n => d.appendChild(n)); return d;
+    }
+    case "Column":
+    case "List": {
+      const horizontal = type === "List" && props.direction === "horizontal";
+      const d = el("div", horizontal ? "a2row" : "a2col"); kids().forEach(n => d.appendChild(n)); return d;
+    }
+    case "Row": {
+      const d = el("div", "a2row" + (props.distribution === "spaceBetween" ? " between" : ""));
+      kids().forEach(n => d.appendChild(n)); return d;
+    }
+    case "Text": {
+      const t = el("div", "a2text");
+      const hint = String(props.usageHint || "body").toLowerCase();
+      if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(hint)) t.classList.add("a2-" + hint);
+      else if (hint === "caption") t.classList.add("a2-caption");
+      t.textContent = boundStr(props.text);
+      return t;
+    }
+    case "Divider":
+      return el("hr", "a2divider");
+    case "Image": {
+      const src = boundStr(props.url || props.src);
+      if (!/^https?:\/\//i.test(src)) return null;   // only allow safe URLs
+      const img = el("img", "a2img"); img.src = src; img.alt = boundStr(props.alt) || ""; return img;
+    }
+    case "Icon": {
+      const s = el("span", "material-symbols-outlined"); s.textContent = iconName(boundStr(props.name) || props.name); return s;
+    }
+    default:
+      return null;   // unknown component -> skipped (text fallback covers content)
+  }
+}
+
+// Render one or more A2UI messages (beginRendering + surfaceUpdate) into `container`.
+// Returns true if anything was drawn.
+function renderSurface(messages, container) {
+  const comps = {};
+  const roots = [];
+  for (const m of messages) {
+    if (!m) continue;
+    if (m.beginRendering && typeof m.beginRendering.root === "string") roots.push(m.beginRendering.root);
+    const su = m.surfaceUpdate;
+    if (su && Array.isArray(su.components)) for (const c of su.components) if (c && c.id && c.component) comps[c.id] = c.component;
+    if (Array.isArray(m)) for (const c of m) if (c && c.id && c.component) comps[c.id] = c.component;
+    if (m.components && Array.isArray(m.components)) for (const c of m.components) if (c && c.id && c.component) comps[c.id] = c.component;
+  }
+  let rootIds = roots.filter(r => comps[r]);
+  if (rootIds.length === 0) {   // no valid root given -> infer un-referenced components
+    const referenced = new Set();
+    for (const id in comps) { const spec = comps[id]; childIds(spec[Object.keys(spec)[0]] || {}).forEach(c => referenced.add(c)); }
+    rootIds = Object.keys(comps).filter(id => !referenced.has(id));
+  }
+  let drew = false;
+  for (const rid of rootIds) { const node = buildNode(rid, comps, new Set()); if (node) { container.appendChild(node); drew = true; } }
+  return drew;
+}
+
+// Fallback: pull every Text value out of the messages as plain text.
+function flattenText(messages) {
+  const out = [];
+  for (const m of messages) {
+    if (!m) continue;
+    const su = m.surfaceUpdate || m;
+    const components = su.components || (Array.isArray(m) ? m : null);
+    if (Array.isArray(components)) {
+      for (const c of components) {
+        if (c && c.component && c.component.Text) out.push(boundStr(c.component.Text.text));
+      }
+    }
+  }
+  return out.join("\n").trim();
+}
+
+function renderMarkdown(str) {
+  if (!str) return "";
+  let html = str
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/^[\*\-]\s+(.+)$/gm, "<li>$1</li>")
+    .replace(/\n\n+/g, "<br><br>")
+    .replace(/\n/g, "<br>");
+  return html.replace(/(<li>[\s\S]*?<\/li>)/g, "<ul>$1</ul>").replace(/<\/ul>\s*<ul>/g, "");
+}
+
+function renderReply(b, parts, isDone = false) {
+  const texts = parts.filter(p => p && (p.kind === "text" || (!p.kind && p.text))).map(p => p.text || "");
+  const a2ui = parts.filter(p => p && p.kind === "a2ui" && p.data).map(p => p.data);
+
+  // Extract any raw <a2ui-json> blocks accidentally embedded in text
+  const cleanTexts = [];
+  const extractedA2ui = [...a2ui];
+
+  for (const t of texts) {
+    const match = t.match(/<a2ui-json>([\s\S]*?)<\/a2ui-json>/);
+    if (match) {
+      const rawJson = match[1].trim();
+      const prose = (t.slice(0, match.index) + t.slice(match.index + match[0].length)).trim();
+      try {
+        const payload = JSON.parse(rawJson);
+        if (Array.isArray(payload) && payload.length && payload[0].component) {
+          extractedA2ui.push({
+            beginRendering: { surfaceId: "1", root: payload[0].id },
+            surfaceUpdate: { surfaceId: "1", components: payload }
+          });
+        } else if (Array.isArray(payload)) {
+          extractedA2ui.push(...payload);
+        } else if (payload && typeof payload === "object") {
+          extractedA2ui.push(payload);
+        }
+      } catch (e) {
+        console.warn("Could not parse a2ui-json block:", e);
+      }
+      if (prose) cleanTexts.push(prose);
+    } else {
+      cleanTexts.push(t);
+    }
+  }
+
+  // If A2UI parts are arriving but card components are incomplete, don't blank the typing indicator yet
+  if (extractedA2ui.length && !isDone) {
+    const testWrap = document.createElement("div");
+    if (!renderSurface(extractedA2ui, testWrap)) {
+      return; // wait for full surfaceUpdate
+    }
+  }
+
+  b.textContent = "";   // clear placeholder
+
+  if (extractedA2ui.length) {
+    b.classList.add("rich");
+    if (!renderSurface(extractedA2ui, b)) {
+      if (isDone) b.appendChild(el("div", null, flattenText(extractedA2ui) || "(no card content)"));
+    }
+  }
+
+  const textStr = cleanTexts.join("\n\n").trim();
+  if (textStr) {
+    const proseDiv = el("div", "prose-content");
+    proseDiv.innerHTML = renderMarkdown(textStr);
+    b.appendChild(proseDiv);
+  }
+
+  if (!b.childNodes.length && isDone) b.textContent = "(no response)";
+  log.scrollTop = log.scrollHeight;
+}
+
+async function sendMessage(text) {
+  if (!text) return;
+  bubble("user").textContent = text;
+  input.value = "";
+  const b = bubble("agent");
+  b.innerHTML = `
+    <div class="typing-indicator">
+      <span class="typing-dot"></span>
+      <span class="typing-dot"></span>
+      <span class="typing-dot"></span>
+      <span class="typing-text" id="stream-status">Connecting with Ghumo Duniya…</span>
+    </div>
+  `;
+
+  const accumulatedParts = [];
+
+  try {
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream, application/json",
+      },
+      body: JSON.stringify({ message: text, stream: true }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errText.slice(0, 200)}`);
+    }
+
+    const contentType = res.headers.get("content-type") || "";
+
+    if (contentType.includes("text/event-stream")) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop(); // keep last incomplete chunk
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data: ")) continue;
+          const jsonStr = trimmed.slice(6).trim();
+          if (!jsonStr) continue;
+
+          try {
+            const ev = JSON.parse(jsonStr);
+            if (ev.kind === "status") {
+              const statusEl = b.querySelector("#stream-status");
+              if (statusEl) {
+                statusEl.textContent = ev.text || "Planning…";
+              }
+            } else if (ev.kind === "part") {
+              accumulatedParts.push(ev.part);
+              renderReply(b, accumulatedParts, false);
+            } else if (ev.kind === "done") {
+              renderReply(b, accumulatedParts, true);
+            }
+          } catch (err) {
+            console.warn("Error parsing stream chunk:", err, jsonStr);
+          }
+        }
+      }
+
+      if (accumulatedParts.length > 0) {
+        renderReply(b, accumulatedParts, true);
+      } else {
+        b.textContent = "(Ghumo Duniya didn't return a reply.)";
+      }
+    } else {
+      // Non-streaming fallback
+      const data = await res.json();
+      renderReply(b, data.parts || [], true);
+    }
+  } catch (e) {
+    b.textContent = "Error: " + e.message;
+  }
+}
+
+// The proxy returns { parts: [{kind:"text",text} | {kind:"a2ui",data}] }.
+form.addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const text = input.value.trim();
+  sendMessage(text);
+});
+
+document.querySelectorAll(".prompt-chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    const prompt = chip.getAttribute("data-prompt");
+    if (prompt) sendMessage(prompt);
+  });
+});
+</script>
+</body>
+</html>
